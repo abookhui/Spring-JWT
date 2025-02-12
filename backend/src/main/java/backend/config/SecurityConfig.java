@@ -1,6 +1,7 @@
 package backend.config;
 
 
+import backend.jwt.JwtFilter;
 import backend.jwt.JwtUtil;
 import backend.jwt.LoginFilter;
 import lombok.RequiredArgsConstructor;
@@ -52,7 +53,10 @@ public class SecurityConfig {
                 );
 
         http
-                .addFilterAt(new LoginFilter(authenticationManager(), jwtUtil), UsernamePasswordAuthenticationFilter.class);
+                .addFilterAt(new LoginFilter(authenticationManager(), jwtUtil), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtFilter(jwtUtil), LoginFilter.class)
+        ;
+
 
 
         // 세션 STATELESS

@@ -69,6 +69,7 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
 
+
         http
                 .cors((corsCustomizer) -> corsCustomizer.configurationSource(new CorsConfigurationSource() {
                     @Override

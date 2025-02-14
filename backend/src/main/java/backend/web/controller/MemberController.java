@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-public class JoinController {
+public class MemberController {
 
     private final JoinService joinService;
 
@@ -27,4 +27,12 @@ public class JoinController {
 
         return "ok";
     }
+
+    @GetMapping("/login")
+    public String loginForm(){
+        return "login";
+    }
+
+
+
 }

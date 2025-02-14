@@ -35,15 +35,20 @@ public class JwtUtil {
         return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().getExpiration().before(new Date());
     }
 
+    public String getCategory(String token){
+        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("category", String.class);
+    }
+
 
     //token 생성
-    public String createJwt(String username, String role, Long expiredMs){ // 토근 살아있는 시간
+    public String createJwt(String category,String username, String role, Long expiredMs){ // 토근 살아있는 시간
 
         return Jwts.builder()
-                .claim("username",username)
-                .claim("role",role)
+                .claim("category", category)
+                .claim("username", username)
+                .claim("role", role)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis()+ expiredMs))  // 소멸 시간
+                .expiration(new Date(System.currentTimeMillis() + expiredMs))
                 .signWith(secretKey)
                 .compact();
 

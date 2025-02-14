@@ -1,9 +1,7 @@
 package backend.config;
 
 
-import backend.jwt.JwtFilter;
-import backend.jwt.JwtUtil;
-import backend.jwt.LoginFilter;
+import backend.jwt.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
@@ -29,6 +28,7 @@ public class SecurityConfig {
 
     private final AuthenticationConfiguration authenticationConfiguration;
     private final JwtUtil jwtUtil;
+    private final RefreshRepository refreshRepository;
 
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
@@ -44,24 +44,25 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf((auth) -> auth.disable());
 
-        // 우선 formLogin을 disable하고, 나중에 다시 활성화
         http.formLogin((auth) -> auth.disable());
+
 
         http.httpBasic((auth) -> auth.disable());
 
         // 경로별 인가 작업
         http
                 .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers("/login", "/join", "/").permitAll()
+                        .requestMatchers("/login", "/join", "/api/**", "/").permitAll()
+                        .requestMatchers("/reissue").permitAll()
                         .requestMatchers("/admin").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 );
 
         http
-                .addFilterAt(new LoginFilter(authenticationManager(), jwtUtil), UsernamePasswordAuthenticationFilter.class)
+                .addFilterAt(new LoginFilter(authenticationManager(), jwtUtil, refreshRepository), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshRepository), LogoutFilter.class)
                 .addFilterBefore(new JwtFilter(jwtUtil), LoginFilter.class)
         ;
-
 
 
         // 세션 STATELESS
@@ -71,23 +72,24 @@ public class SecurityConfig {
 
 
         http
-                .cors((corsCustomizer) -> corsCustomizer.configurationSource(new CorsConfigurationSource() {
+                .cors((corsCustomizer -> corsCustomizer.configurationSource(new CorsConfigurationSource() {
+
                     @Override
                     public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
 
-                        CorsConfiguration config = new CorsConfiguration();
+                        CorsConfiguration configuration = new CorsConfiguration();
 
-                        config.setAllowedOrigins(Collections.singletonList("http://localhost:3000"));
-                        config.setAllowedMethods(Collections.singletonList("*"));
-                        config.setAllowCredentials(true);
-                        config.setAllowedHeaders(Collections.singletonList("*"));
-                        config.setMaxAge(3600L);
+                        configuration.setAllowedOrigins(Collections.singletonList("http://localhost:80"));
+                        configuration.setAllowedMethods(Collections.singletonList("*"));
+                        configuration.setAllowCredentials(true);
+                        configuration.setAllowedHeaders(Collections.singletonList("*"));
+                        configuration.setMaxAge(3600L);
 
-                        config.setExposedHeaders(Collections.singletonList("Authorization"));
+                        configuration.setExposedHeaders(Collections.singletonList("Authorization"));
 
-                        return config;
+                        return configuration;
                     }
-                }));
+                })));
 
         return http.build();
     }

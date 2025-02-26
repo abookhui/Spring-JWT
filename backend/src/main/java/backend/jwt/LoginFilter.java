@@ -1,7 +1,10 @@
 package backend.jwt;
 
+import backend.domain.dto.LoginDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Jwt;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,9 +17,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.util.StreamUtils;
 
 import java.io.IOException;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
@@ -40,16 +45,38 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
 
-        String username = obtainUsername(request);
-        String password = obtainPassword(request);
+//        String username = obtainUsername(request);
+//        String password = obtainPassword(request);
+//
+//        log.info("username = {} , password = {}", username, password);
+//
+//
+//        //스프링 시큐리티에서 username과 password를 검증하기 위해서는 token에 담아야 함
+//        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, password, null); // role값 null
+//
+//        //token에 담은 검증을 위한 AuthenticationManager로 전달
+//        return authenticationManager.authenticate(authToken);
 
-        log.info("username = {} , password = {}", username, password);
+        // form-data -> json 으로 변경
+        LoginDto loginDTO = new LoginDto();
 
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            ServletInputStream inputStream = request.getInputStream();
+            String messageBody = StreamUtils.copyToString(inputStream, StandardCharsets.UTF_8);
+            loginDTO = objectMapper.readValue(messageBody, LoginDto.class);
 
-        //스프링 시큐리티에서 username과 password를 검증하기 위해서는 token에 담아야 함
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, password, null); // role값 null
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
-        //token에 담은 검증을 위한 AuthenticationManager로 전달
+        String username = loginDTO.getUsername();
+        String password = loginDTO.getPassword();
+
+        System.out.println(username);
+
+        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, password);
+
         return authenticationManager.authenticate(authToken);
     }
 
@@ -61,7 +88,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         log.info("success");
 
 
-        //유저 정보
         String username = authentication.getName();
 
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
@@ -69,28 +95,18 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         GrantedAuthority auth = iterator.next();
         String role = auth.getAuthority();
 
-        //토큰 생성
+        // token 생성
         String access = jwtUtil.createJwt("access", username, role, 600000L);
         String refresh = jwtUtil.createJwt("refresh", username, role, 86400000L);
+
 
         //Refresh 토큰 저장
         addRefreshEntity(username, refresh, 86400000L);
 
-        //응답 설정
+        // 응답 생성
         response.setHeader("access", access);
         response.addCookie(createCookie("refresh", refresh));
         response.setStatus(HttpStatus.OK.value());
-
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-
-        // JSON 응답 작성
-        try {
-            response.getWriter().write("{\"message\": \"로그인 성공\", \"accessToken\": \"" + access + "\"}");
-            response.getWriter().flush();
-        } catch (Exception e) {
-            log.error("응답 작성 중 오류 발생", e);
-        }
 
     }
 

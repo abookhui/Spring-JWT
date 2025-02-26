@@ -12,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -24,17 +23,25 @@ public class JwtFilter extends OncePerRequestFilter  {// 요청에 대해 1번�
 
     private final JwtUtil jwtUtil;
 
-
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-        //String authorization = request.getHeader("Authorization");
+        String authorizationHeader = request.getHeader("Authorization");
 
         // 헤더에서 access키에 담긴 토큰을 꺼냄
-        String accessToken = request.getHeader("access");
+        //String accessToken = request.getHeader("access");
+
+        // Authorization 헤더가 없거나 "Bearer "로 시작하지 않으면 필터 통과
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // "Bearer " 제거하고 순수 토큰만 추출
+        String accessToken = authorizationHeader.substring(7);
 
         // 토큰이 없다면 다음 필터로 넘김
         if (accessToken == null) {
@@ -79,9 +86,9 @@ public class JwtFilter extends OncePerRequestFilter  {// 요청에 대해 1번�
         UserEntity userEntity = new UserEntity();
         userEntity.setUsername(username);
         userEntity.setRole(role);
-        CustomUserDetail customUserDetails = new CustomUserDetail(userEntity);
+        CustomUserDetail customUserDetail = new CustomUserDetail(userEntity);
 
-        Authentication authToken = new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities());
+        Authentication authToken = new UsernamePasswordAuthenticationToken(customUserDetail, null, customUserDetail.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authToken);
 
         filterChain.doFilter(request, response);

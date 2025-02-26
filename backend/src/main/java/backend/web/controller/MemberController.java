@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/api")
 @Slf4j
 public class MemberController {
 
@@ -27,12 +28,4 @@ public class MemberController {
 
         return "ok";
     }
-
-    @GetMapping("/login")
-    public String loginForm(){
-        return "login";
-    }
-
-
-
 }

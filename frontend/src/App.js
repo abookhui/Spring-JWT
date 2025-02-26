@@ -1,19 +1,32 @@
-import './App.css';
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import Login from "./LoginPage";
-import Home from "./Home";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Join from "./pages/Join";
+import MyPage from "./pages/MyPage";
 
 function App() {
-  return (
-    <div className="App">
+    const [token, setToken] = useState(localStorage.getItem("token"));
+
+    useEffect(() => {
+        if (token) {
+            localStorage.setItem("token", token);
+        } else {
+            localStorage.removeItem("token");
+        }
+    }, [token]);
+
+    return (
         <Router>
             <Routes>
-                <Route path="/" element={<Home/> }/>
-                <Route path="/login" element={<Login />}/>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login setToken={setToken} />} />
+                <Route path="/join" element={<Join />} />
+                <Route path="/mypage" element={token ? <MyPage token={token} /> : <Navigate to="/login" />}
+                />
             </Routes>
         </Router>
-    </div>
-  );
+    );
 }
 
 export default App;
